@@ -38,9 +38,13 @@ def print_help_message():
     stop_word = config.STOP_WORD
     toggle_hotkey = config.hotkeys['toggle_recording']['display_name']
     finalize_hotkey = config.hotkeys['finalize_session']['display_name']
+    double_tap_cfg = config.double_tap_toggle
 
     print_status(_("  - Say '{start_word}' or press {hotkey} to start/stop.").format(start_word=start_word, hotkey=toggle_hotkey), config.color_help_text)
     print_status(_("  - Say '{stop_word}' or press {hotkey} to stop and copy.").format(stop_word=stop_word, hotkey=finalize_hotkey), config.color_help_text)
+    if double_tap_cfg.get('enabled', False):
+        key_name = double_tap_cfg.get('key', 'ctrl_l')
+        print_status(_("  - Double tap '{key}' to start/stop.").format(key=key_name), config.color_help_text)
 
     print_status(_("\n{style}  Manual commands:{reset}").format(style=title_style, reset=config.RESET), config.color_help_text)
     print_status(_("  - '/cancel', '/delete-word', '/nl'"), config.color_help_text)

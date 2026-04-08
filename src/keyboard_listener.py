@@ -1,7 +1,8 @@
 # src/keyboard_listener.py
 
 import queue
-from pynput.keyboard import GlobalHotKeys
+import time
+from pynput.keyboard import GlobalHotKeys, Listener
 from config.config import config
 from src.i18n import get_translation
 
@@ -52,18 +53,54 @@ def keyboard_listener_thread(control_queue: queue.Queue, stop_event):
                 # This handles cases where config might be malformed.
                 print(f"{config.RED}Could not create hotkey for action '{action}': {e}{config.RESET}")
 
-    if not hotkeys_to_listen:
+    hotkey_listener = None
+    if hotkeys_to_listen:
+        # Create and run the listener with the defined hotkeys.
+        # GlobalHotKeys runs in its own thread.
+        hotkey_listener = GlobalHotKeys(hotkeys_to_listen)
+        hotkey_listener.start()
+
+    double_tap_listener = None
+    double_tap_cfg = config.double_tap_toggle
+    if double_tap_cfg.get('enabled', False):
+        target_key = str(double_tap_cfg.get('key', 'ctrl_l')).lower()
+        interval_ms = int(double_tap_cfg.get('max_interval_ms', 350))
+        max_interval_s = max(0.05, interval_ms / 1000.0)
+        state = {
+            'last_release_at': 0.0,
+        }
+
+        def key_name(key) -> str | None:
+            # pynput Key instances expose a name attribute for non-character keys.
+            name = getattr(key, 'name', None)
+            if name:
+                return str(name).lower()
+            return None
+
+        def on_release(key):
+            name = key_name(key)
+            if name != target_key:
+                return
+            now = time.monotonic()
+            if 0 < now - state['last_release_at'] <= max_interval_s:
+                control_queue.put('TOGGLE_RECORDING')
+                state['last_release_at'] = 0.0
+                return
+            state['last_release_at'] = now
+
+        double_tap_listener = Listener(on_release=on_release)
+        double_tap_listener.start()
+
+    if not hotkeys_to_listen and not double_tap_cfg.get('enabled', False):
         print(f"{config.YELLOW}No valid hotkeys found in configuration. Keyboard listener will not run.{config.RESET}")
         return
-
-    # Create and run the listener with the defined hotkeys.
-    # GlobalHotKeys runs in its own thread.
-    hotkey_listener = GlobalHotKeys(hotkeys_to_listen)
-    hotkey_listener.start()
 
     # The main part of this thread will now block here until the main program
     # sets the stop_event, indicating it's time to shut down.
     stop_event.wait()
 
     # Stop the listener thread when the program is exiting.
-    hotkey_listener.stop()
+    if hotkey_listener:
+        hotkey_listener.stop()
+    if double_tap_listener:
+        double_tap_listener.stop()

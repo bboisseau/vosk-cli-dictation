@@ -110,6 +110,20 @@ class Config:
         return self.data.get('hotkeys', {})
 
     @property
+    def double_tap_toggle(self) -> dict:
+        defaults = {
+            'enabled': False,
+            'key': 'ctrl_l',
+            'max_interval_ms': 350,
+        }
+        user_values = self.data.get('double_tap_toggle', {})
+        if not isinstance(user_values, dict):
+            return defaults
+        merged = defaults.copy()
+        merged.update(user_values)
+        return merged
+
+    @property
     def language_settings(self) -> dict:
         return self.data.get('language_settings', {})
 

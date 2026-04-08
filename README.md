@@ -39,6 +39,10 @@ This tool was born from the need for a robust, locally-run dictation system on G
 
 ## ⚙️ Getting Started
 
+> 📖 **For a complete step-by-step setup with GNOME integration, see [SETUP_GUIDE.md](SETUP_GUIDE.md)**
+
+Quick reference below:
+
 ### 1. System Dependencies
 
 This project was developed and tested on **Debian 12 (Bookworm)**. You will need the following packages:
@@ -88,6 +92,58 @@ python3 src/main.py
 python3 src/main.py -l en
 ```
 
+### 6. Run It Automatically (No Terminal Needed)
+
+If you want dictation available right after login, install the user-level `systemd` service:
+
+```bash
+chmod +x scripts/install-systemd-user-service.sh scripts/uninstall-systemd-user-service.sh
+./scripts/install-systemd-user-service.sh
+```
+
+Optional language override:
+
+```bash
+./scripts/install-systemd-user-service.sh en
+```
+
+Useful commands:
+
+```bash
+systemctl --user status vosk-cli-dictation.service
+systemctl --user restart vosk-cli-dictation.service
+./scripts/uninstall-systemd-user-service.sh
+```
+
+### 7. Install GNOME Shell Extension (Recommended)
+
+Control Vosk directly from your GNOME top panel with a dedicated extension that offers:
+- 🎤 Live status indicator
+- 🔄 Quick start/stop controls
+- 🌍 Switch language/models without terminal
+- 📥 Model download guide
+- ⚙️ Config editor shortcut
+
+Install the extension:
+
+```bash
+./scripts/install-gnome-extension.sh
+```
+
+Then:
+1. Restart GNOME Shell (Ctrl+Alt+F2, type `r`, press Enter) or log out/back in
+2. Open **Settings > Extensions**
+3. Toggle **"Vosk CLI Dictation"** ON
+
+A microphone icon will appear in your top panel. Click it for the menu.
+
+For full details and troubleshooting, see [gnome-extension/README.md](gnome-extension/README.md).
+
+**Alternative (Manual GNOME Shortcut):** If you prefer not to use the extension, add a custom shortcut in Settings > Keyboard > Keyboard Shortcuts > Custom Shortcuts:
+- Name: `Vosk Dictation Restart`
+- Command: `systemctl --user restart vosk-cli-dictation.service`
+- Bind your preferred key combo
+
 ### 💡 Pro Tip: Create a Quick-Launch Command (Optional)
 
 For easier access, you can add a function to your shell's configuration file (e.g., `~/.bashrc` or `~/.zshrc`).
@@ -133,6 +189,36 @@ While the script is running, you can type these commands in its terminal window 
 ### Customization
 
 All settings can be modified in the `config/config.yaml` file. This includes hotkeys, UI colors, voice commands, and recognition aliases.
+
+You can also enable a configurable double-tap key shortcut:
+
+```yaml
+double_tap_toggle:
+  enabled: true
+  key: "ctrl_l"
+  max_interval_ms: 350
+```
+
+You can also enable a configurable double-tap key shortcut:
+
+```yaml
+double_tap_toggle:
+  enabled: true
+  key: "ctrl_l"
+  max_interval_ms: 350
+```
+
+This lets you toggle recording by pressing the configured key twice quickly.
+
+### 🌍 Managing Models via GNOME Extension
+
+If you installed the GNOME extension, you can:
+
+1. **Switch Languages**: Click the microphone icon > **Language / Model** to instantly switch between installed models
+2. **Download Models**: Click **"Download Models..."** to get step-by-step instructions
+3. **Edit Configuration**: Click **"Edit Config"** to open config.yaml in your text editor
+
+New models are automatically detected—just download, extract to `vosk-model/`, and select from the menu.
 
 ## 🤝 Contributing
 

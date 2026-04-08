@@ -111,6 +111,11 @@ hotkeys:
     pynput_keys: ["alt_l", "s"]
     display_name: "[Alt+S]"
 
+double_tap_toggle:
+  enabled: false
+  key: "ctrl_l"
+  max_interval_ms: 350
+
 sound_file: "/usr/share/sounds/freedesktop/stereo/audio-volume-change.oga"
 
 theme:

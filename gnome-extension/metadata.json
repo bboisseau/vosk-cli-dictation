@@ -1,0 +1,9 @@
+{
+  "uuid": "vosk-cli-dictation@bboisseau.local",
+  "name": "Vosk CLI Dictation",
+  "description": "Control Vosk dictation service from the top panel. Toggle recording, select language/models, and manage service.",
+  "version": 1,
+  "shell-version": ["45", "46", "47", "48", "49"],
+  "url": "https://github.com/bboisseau/vosk-cli-dictation",
+  "settings-schema": "org.gnome.shell.extensions.vosk-cli-dictation"
+}

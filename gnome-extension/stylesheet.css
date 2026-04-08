@@ -1,0 +1,13 @@
+/* Vosk CLI Dictation Extension Stylesheet */
+
+.vosk-status-icon {
+    padding: 0 4px;
+}
+
+.vosk-status-icon.vosk-running {
+    color: #2ecc71;
+}
+
+.vosk-status-icon.vosk-stopped {
+    color: #e74c3c;
+}
