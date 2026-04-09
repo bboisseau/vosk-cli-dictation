@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.vosk-cli-dictation" path="/org/gnome/shell/extensions/vosk-cli-dictation/">
+    <key name="show-indicator" type="b">
+      <default>true</default>
+      <summary>Show panel indicator</summary>
+      <description>Controls whether the panel indicator is shown.</description>
+    </key>
+    <key name="selected-language" type="s">
+      <default>"fr"</default>
+      <summary>Selected language</summary>
+      <description>The language code for voice recognition (e.g., 'en', 'fr')</description>
+    </key>
+    <key name="selected-model-path" type="s">
+      <default>"vosk-model/vosk-model-small-fr-0.22"</default>
+      <summary>Selected model path</summary>
+      <description>The relative path to the selected Vosk model</description>
+    </key>
+    <key name="shortcut-key" type="s">
+      <default>"ctrl_l"</default>
+      <summary>Keyboard shortcut key</summary>
+      <description>The key to use for the keyboard shortcut (pynput format)</description>
+    </key>
+    <key name="shortcut-tap-type" type="s">
+      <default>"double"</default>
+      <summary>Keyboard shortcut tap type</summary>
+      <description>Type of keystroke: 'single', 'double', or 'triple'</description>
+    </key>
+  </schema>
+</schemalist>

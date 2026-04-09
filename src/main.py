@@ -20,6 +20,12 @@ from src.ui import ui_thread
 from src.keyboard_listener import keyboard_listener_thread
 from src.text_processing import TextProcessor
 
+run_hud_overlay = None
+try:
+    from src.hud_overlay import run_hud_overlay
+except Exception:
+    run_hud_overlay = None
+
 def print_status(message, color):
     """Print status message with color."""
     print(f"{color}{message}")
@@ -44,7 +50,9 @@ def print_help_message():
     print_status(_("  - Say '{stop_word}' or press {hotkey} to stop and copy.").format(stop_word=stop_word, hotkey=finalize_hotkey), config.color_help_text)
     if double_tap_cfg.get('enabled', False):
         key_name = double_tap_cfg.get('key', 'ctrl_l')
-        print_status(_("  - Double tap '{key}' to start/stop.").format(key=key_name), config.color_help_text)
+        tap_count = int(double_tap_cfg.get('tap_count', 2))
+        tap_label = {1: 'Single', 2: 'Double', 3: 'Triple'}.get(tap_count, 'Double')
+        print_status(_("  - {tap_label} tap '{key}' to start/stop.").format(tap_label=tap_label, key=key_name), config.color_help_text)
 
     print_status(_("\n{style}  Manual commands:{reset}").format(style=title_style, reset=config.RESET), config.color_help_text)
     print_status(_("  - '/cancel', '/delete-word', '/nl'"), config.color_help_text)
@@ -111,10 +119,17 @@ def main():
     atexit.register(exit_cleanup)
 
     print_status(_("Checking external dependencies..."), config.color_info)
-    if not check_command_exists("xdotool"):
-        print_status(_("'xdotool' is a critical dependency and is not installed."), config.color_error)
-        print_status(_("Please install it (e.g., 'sudo apt-get install xdotool')."), config.color_error)
+    has_xdotool = check_command_exists("xdotool")
+    has_wtype = check_command_exists("wtype")
+
+    if not has_xdotool and not has_wtype:
+        print_status(_("No supported typing backend found. Install xdotool (X11) or wtype (Wayland)."), config.color_error)
+        print_status(_("Suggested install: sudo apt install xdotool wtype wl-clipboard"), config.color_error)
         return
+
+    if os.environ.get('XDG_SESSION_TYPE', '').lower() == 'wayland' and not has_wtype:
+        print_status(_("Wayland detected: xdotool may not type in native Wayland apps. Install wtype for reliable typing."), config.color_warning)
+
     if not check_command_exists("paplay"):
         print_status(_("'paplay' not found. Sound notifications will be disabled."), config.color_warning)
     print_status(_("Dependencies checked."), config.color_info)
@@ -145,6 +160,7 @@ def main():
     audio_queue = queue.Queue()
     text_queue = queue.Queue()
     control_queue = queue.Queue()
+    hud_queue = queue.Queue()
     stop_event = threading.Event()
     display_partials_event = threading.Event()
 
@@ -154,8 +170,15 @@ def main():
         threading.Thread(target=recognition_thread, args=(recognizer, audio_queue, text_queue, stop_event, display_partials_event)),
         threading.Thread(target=audio_capture_thread, args=(stream, audio_queue, stop_event)),
         threading.Thread(target=keyboard_listener_thread, args=(control_queue, stop_event)),
-        threading.Thread(target=ui_thread, args=(text_queue, control_queue, stop_event, processor, display_partials_event))
+        threading.Thread(target=ui_thread, args=(text_queue, control_queue, stop_event, processor, display_partials_event, hud_queue))
     ]
+
+    if run_hud_overlay and (os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')):
+        threads.append(
+            threading.Thread(target=run_hud_overlay, args=(hud_queue, stop_event), daemon=True)
+        )
+    elif os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'):
+        print_status(_('HUD disabled: tkinter is not available in this Python environment.'), config.color_warning)
 
     for t in threads:
         if t is not threading.current_thread():

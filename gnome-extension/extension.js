@@ -1,260 +1,103 @@
+import GObject from 'gi://GObject';
+import St from 'gi://St';
+import GLib from 'gi://GLib';
+import * as ByteArray from 'resource:///org/gnome/gjs/modules/byteArray.js';
+
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
-import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
-import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
-import St from 'gi://St';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const VOSK_SERVICE = 'vosk-cli-dictation.service';
-const PROJECT_HOME = (GLib.get_home_dir() + '/vosk-cli-dictation-bboisseau').replace(/\/+/g, '/');
-const CONFIG_FILE = PROJECT_HOME + '/config/config.yaml';
+const SERVICE_NAME = 'vosk-cli-dictation.service';
 
+const VoskIndicator = GObject.registerClass(
 class VoskIndicator extends PanelMenu.Button {
     constructor(extension) {
         super(0.0, 'Vosk CLI Dictation');
-        this._extension = extension;
-        this._isRunning = false;
+        this._ = extension.gettext.bind(extension);
 
-        // Create icon/label
-        let hbox = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-        let icon = new St.Icon({
+        this._icon = new St.Icon({
             icon_name: 'input-microphone-symbolic',
-            style_class: 'system-status-icon'
+            style_class: 'system-status-icon',
         });
-        hbox.add_child(icon);
-        this._label = new St.Label({ text: _('Vosk'), y_align: St.Align.MIDDLE });
-        hbox.add_child(this._label);
-        this.add_child(hbox);
+        this.add_child(this._icon);
 
-        // Status indicator
-        this._statusIcon = new St.Icon({
-            icon_name: 'process-stop-symbolic',
-            style_class: 'system-status-icon vosk-status-icon',
-        });
-        hbox.add_child(this._statusIcon);
+        this._statusItem = new PopupMenu.PopupMenuItem(this._('Checking service status...'));
+        this._statusItem.reactive = false;
+        this.menu.addMenuItem(this._statusItem);
 
-        this._buildMenu();
-        this._refreshStatus();
-        this._statusCheckTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        const restartItem = new PopupMenu.PopupMenuItem(this._('Restart Service'));
+        restartItem.connect('activate', () => this._runSystemctl(['restart', SERVICE_NAME]));
+        this.menu.addMenuItem(restartItem);
+
+        const stopItem = new PopupMenu.PopupMenuItem(this._('Stop Service'));
+        stopItem.connect('activate', () => this._runSystemctl(['stop', SERVICE_NAME]));
+        this.menu.addMenuItem(stopItem);
+
+        const startItem = new PopupMenu.PopupMenuItem(this._('Start Service'));
+        startItem.connect('activate', () => this._runSystemctl(['start', SERVICE_NAME]));
+        this.menu.addMenuItem(startItem);
+
+        this._statusRefreshId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
             this._refreshStatus();
             return GLib.SOURCE_CONTINUE;
         });
+
+        this._refreshStatus();
     }
 
-    _buildMenu() {
-        // Start/Stop
-        this._toggleItem = this.menu.addAction(_('Start Service'), () => this._toggleService());
-
-        // Language/Model Selection
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        let langSubMenu = new PopupMenu.PopupSubMenuMenuItem(_('Language / Model'));
-        this.menu.addMenuItem(langSubMenu);
-        this._populateLanguageMenu(langSubMenu.menu);
-
-        // Download Models
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.menu.addAction(_('Download Models...'), () => this._openDownloadGuide());
-
-        // Restart Service
-        this.menu.addAction(_('Restart Service'), () => this._restartService());
-
-        // Open Config
-        this.menu.addAction(_('Edit Config'), () => this._openConfig());
-
-        // Quit
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.menu.addAction(_('Quit Service'), () => this._stopService());
-    }
-
-    _populateLanguageMenu(menu) {
-        menu.removeAll();
-        let config = this._loadConfig();
-        if (!config) {
-            menu.addMenuItem(new PopupMenu.PopupMenuItem(_('(Config not found)')));
-            return;
-        }
-
-        let currentLang = config.default_model || 'en';
-        let models = config.vosk_models || [];
-
-        models.forEach(model => {
-            let label = this._getModelLabel(model.name);
-            let item = new PopupMenu.PopupMenuItem(label);
-            if (model.name === currentLang) {
-                item.setOrnament(PopupMenu.Ornament.DOT);
-            }
-            item.connect('activate', () => this._setLanguage(model.name));
-            menu.addMenuItem(item);
-        });
-    }
-
-    _getModelLabel(code) {
-        let labels = { 'en': '🇬🇧 English', 'fr': '🇫🇷 Français' };
-        return labels[code] || code;
-    }
-
-    _loadConfig() {
+    _runSystemctl(args) {
         try {
-            let file = Gio.File.new_for_path(CONFIG_FILE);
-            let [ok, contents] = file.load_contents(null);
-            if (!ok) return null;
-
-            let text = new TextDecoder().decode(contents);
-            // Simple YAML parser for default_model and vosk_models
-            let config = { vosk_models: [] };
-            let lines = text.split('\n');
-            let inModels = false;
-
-            for (let i = 0; i < lines.length; i++) {
-                let line = lines[i];
-                if (line.startsWith('default_model:')) {
-                    let match = line.match(/:\s*"?(\w+)"?/);
-                    if (match) config.default_model = match[1];
-                }
-                if (line.startsWith('vosk_models:')) {
-                    inModels = true;
-                    continue;
-                }
-                if (inModels) {
-                    if (line.match(/^\s*-\s+name:/)) {
-                        let nameMatch = line.match(/name:\s*"?(\w+)"?/);
-                        if (nameMatch) {
-                            config.vosk_models.push({ name: nameMatch[1] });
-                        }
-                    }
-                    if (!line.startsWith('  ') && line.trim() && !line.startsWith('vosk_models')) {
-                        inModels = false;
-                    }
-                }
-            }
-            return config;
-        } catch (e) {
-            logError(e);
-            return null;
-        }
-    }
-
-    _setLanguage(lang) {
-        try {
-            let file = Gio.File.new_for_path(CONFIG_FILE);
-            let [ok, contents] = file.load_contents(null);
-            if (!ok) return;
-
-            let text = new TextDecoder().decode(contents);
-            let updated = text.replace(/^default_model:.*$/m, `default_model: "${lang}"`);
-
-            let stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
-            stream.write_all(updated, null);
-            stream.close(null);
-
-            this._restartService();
-        } catch (e) {
-            logError(e);
-        }
-    }
-
-    _toggleService() {
-        if (this._isRunning) {
-            this._stopService();
-        } else {
-            this._startService();
-        }
-    }
-
-    _startService() {
-        this._execSystemctl(['start', VOSK_SERVICE]);
-    }
-
-    _stopService() {
-        this._execSystemctl(['stop', VOSK_SERVICE]);
-    }
-
-    _restartService() {
-        this._execSystemctl(['restart', VOSK_SERVICE]);
-    }
-
-    _execSystemctl(args) {
-        try {
-            let cmd = ['systemctl', '--user', ...args];
+            const cmd = ['systemctl', '--user', ...args];
             GLib.spawn_async(null, cmd, null, GLib.SpawnFlags.SEARCH_PATH, null);
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 350, () => {
                 this._refreshStatus();
                 return GLib.SOURCE_REMOVE;
             });
         } catch (e) {
-            logError(e);
+            logError(e, 'Vosk extension: failed to run systemctl command');
         }
     }
 
     _refreshStatus() {
         try {
-            let [ok, output] = GLib.spawn_command_line_sync(
-                `systemctl --user is-active ${VOSK_SERVICE}`
-            );
-            let status = new TextDecoder().decode(output).trim();
-            this._isRunning = (status === 'active');
-
-            if (this._isRunning) {
-                this._statusIcon.icon_name = 'media-playback-start-symbolic';
-                this._statusIcon.add_style_class_name('vosk-running');
-                this._statusIcon.remove_style_class_name('vosk-stopped');
-                this._toggleItem.label.text = _('Stop Service');
+            const [, out] = GLib.spawn_command_line_sync(`systemctl --user is-active ${SERVICE_NAME}`);
+            const state = ByteArray.toString(out).trim();
+            if (state === 'active') {
+                this._statusItem.label.text = this._('Service: running');
+                this._icon.set_style('color: #22c55e;');
             } else {
-                this._statusIcon.icon_name = 'media-playback-stop-symbolic';
-                this._statusIcon.add_style_class_name('vosk-stopped');
-                this._statusIcon.remove_style_class_name('vosk-running');
-                this._toggleItem.label.text = _('Start Service');
+                this._statusItem.label.text = this._('Service: stopped');
+                this._icon.set_style('color: #ef4444;');
             }
         } catch (e) {
-            logError(e);
-        }
-    }
-
-    _openDownloadGuide() {
-        // Open a dialog with model download instructions
-        let cmd = [
-            'zenity', '--info',
-            '--title=Vosk Model Download',
-            '--text=Models must be downloaded manually.\n\n' +
-                'Visit: https://alphacephei.com/vosk/models\n\n' +
-                'Download:\n' +
-                '• vosk-model-small-en-us-0.15 (English)\n' +
-                '• vosk-model-small-fr-0.22 (French)\n\n' +
-                'Extract to: ' + PROJECT_HOME + '/vosk-model/',
-            '--width=500'
-        ];
-        try {
-            GLib.spawn_async(null, cmd, null, GLib.SpawnFlags.SEARCH_PATH, null);
-        } catch (e) {
-            logError(e);
-        }
-    }
-
-    _openConfig() {
-        try {
-            GLib.spawn_async(null, ['gnome-text-editor', CONFIG_FILE], null, GLib.SpawnFlags.SEARCH_PATH, null);
-        } catch (e) {
-            logError(e);
+            this._statusItem.label.text = this._('Service: unknown');
+            this._icon.set_style('color: #ef4444;');
+            logError(e, 'Vosk extension: failed to refresh service status');
         }
     }
 
     destroy() {
-        if (this._statusCheckTimeout) {
-            GLib.source_remove(this._statusCheckTimeout);
+        if (this._statusRefreshId) {
+            GLib.source_remove(this._statusRefreshId);
+            this._statusRefreshId = 0;
         }
         super.destroy();
     }
-}
+});
 
 export default class VoskExtension extends Extension {
     enable() {
         this._indicator = new VoskIndicator(this);
-        Main.panel.addToStatusArea('vosk-indicator', this._indicator);
+        Main.panel.addToStatusArea(this.uuid, this._indicator);
     }
 
     disable() {
-        this._indicator?.destroy();
-        this._indicator = null;
+        if (this._indicator) {
+            this._indicator.destroy();
+            this._indicator = null;
+        }
     }
 }

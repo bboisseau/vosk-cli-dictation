@@ -11,3 +11,14 @@
 .vosk-status-icon.vosk-stopped {
     color: #e74c3c;
 }
+
+.success-icon {
+    color: #2ecc71;
+    text-shadow: 0 0 4px rgba(46, 204, 113, 0.5);
+}
+
+.red-icon {
+    color: #e74c3c;
+    text-shadow: 0 0 4px rgba(231, 76, 60, 0.5);
+}
+
