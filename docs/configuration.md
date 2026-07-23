@@ -24,6 +24,7 @@ audio: [...]
 recognition: [...]
 language_settings: [...]
 hotkeys: [...]
+double_tap_toggle: [...]
 sound_file: "..."
 theme: [...]
 ```
@@ -127,6 +128,23 @@ hotkeys:
     pynput_keys: ["alt_l", "s"]
     display_name: "[Alt+S]"
 ```
+
+### `double_tap_toggle`
+
+Optional shortcut to toggle recording by pressing the same key twice quickly.
+
+-   **`enabled`** (boolean): Enables or disables double-tap detection.
+-   **`key`** (string): Pynput key name to watch (example: `ctrl_l`, `ctrl_r`, `shift`).
+-   **`max_interval_ms`** (integer): Maximum delay between taps, in milliseconds.
+
+```yaml
+double_tap_toggle:
+  enabled: true
+  key: "ctrl_l"
+  max_interval_ms: 350
+```
+
+If this is enabled, existing `hotkeys` still work and both trigger methods can be used.
 
 ### `sound_file`
 

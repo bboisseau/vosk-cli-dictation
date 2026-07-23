@@ -40,16 +40,32 @@ def load_model(model_name: str):
         print(f"{config.color_error}{error_msg}{config.RESET}")
         return None, None
 
-def recognition_thread(recognizer, audio_queue: queue.Queue, text_queue: queue.Queue, stop_event, display_partials_event):
+def recognition_thread(recognizer, audio_queue: queue.Queue, text_queue: queue.Queue, stop_event, display_partials_event, partial_callback=None, flush_event=None, flush_done_event=None):
     """
     Listens for audio data and puts only FINAL RESULTS into the text_queue.
     Displays partial results only when the display_partials_event is set.
+    When flush_event is set, calls FinalResult() to flush buffered speech.
     """
     _ = get_translation()
     last_partial_length = 0
     in_progress_label = _("[In progress]")
 
     while not stop_event.is_set():
+        # Flush buffered speech when requested (e.g. user presses Stop)
+        if flush_event and flush_event.is_set():
+            flush_event.clear()
+            result_json = recognizer.FinalResult()
+            result_dict = json.loads(result_json)
+            text = result_dict.get("text", "").strip()
+            if text:
+                if last_partial_length > 0:
+                    print(f"\r{' ' * last_partial_length}\r", end='', flush=True)
+                    last_partial_length = 0
+                text_queue.put(text)
+            if flush_done_event:
+                flush_done_event.set()
+            continue
+
         try:
             data = audio_queue.get(timeout=0.1)
 
@@ -66,6 +82,8 @@ def recognition_thread(recognizer, audio_queue: queue.Queue, text_queue: queue.Q
                 partial_dict = json.loads(recognizer.PartialResult())
                 partial_text = partial_dict.get("partial", "").strip()
 
+                if partial_callback and partial_text:
+                    partial_callback(partial_text)
                 if display_partials_event.is_set() and partial_text:
                     print(f"\r{' ' * last_partial_length}\r", end='', flush=True)
                     # UPDATE: Use theme colors from config

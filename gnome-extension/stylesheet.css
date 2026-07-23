@@ -1,0 +1,132 @@
+/* Vosk CLI Dictation Extension Stylesheet */
+
+/* ── Panel indicator ────────────────────────────────────────────────────── */
+.dictation-indicator {
+    /* inherits system-status-icon colour by default */
+}
+
+.dictation-indicator-active {
+    color: #E95420;   /* Ubuntu orange while recording */
+}
+
+/* ── Overlay container ──────────────────────────────────────────────────── */
+.dictation-overlay {
+    background-color: rgba(20, 20, 22, 0.95);
+    border-radius: 999px;            /* full pill when no text */
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.60),
+                0 2px 6px  rgba(0, 0, 0, 0.40);
+    padding: 12px 16px;
+    min-width: 320px;
+    max-width: 560px;
+}
+
+/* Card mode (text showing) — less rounded corners */
+.dictation-overlay-card {
+    border-radius: 18px;
+}
+
+/* ── Top row ────────────────────────────────────────────────────────────── */
+.dictation-top-row {
+    spacing: 10px;
+}
+
+/* ── Waveform bars ──────────────────────────────────────────────────────── */
+.dictation-wave-box {
+    spacing: 3px;
+    padding-right: 4px;
+}
+
+.dictation-wave-bar {
+    width: 4px;
+    height: 6px;
+    background-color: #E95420;
+    border-radius: 2px;
+}
+
+/* ── Status label ───────────────────────────────────────────────────────── */
+.dictation-status {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+}
+
+/* ── Language badge ─────────────────────────────────────────────────────── */
+.dictation-lang {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 11px;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    padding: 2px 7px;
+}
+/* ── Language toggle buttons ────────────────────────────────────────── */
+.dictation-lang-btn {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11px;
+    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 5px;
+    padding: 2px 7px;
+}
+
+.dictation-lang-btn:hover {
+    background-color: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.80);
+}
+
+.dictation-lang-active {
+    color: #ffffff;
+    background-color: rgba(233, 84, 32, 0.25);
+    border-color: rgba(233, 84, 32, 0.45);
+}
+/* ── Stop button ────────────────────────────────────────────────────────── */
+.dictation-stop-btn {
+    background-color: rgba(233, 84, 32, 0.18);
+    border: 1px solid rgba(233, 84, 32, 0.30);
+    border-radius: 999px;
+    padding: 5px 8px;
+    color: #E95420;
+}
+
+.dictation-stop-btn:hover {
+    background-color: rgba(233, 84, 32, 0.40);
+    border-color: rgba(233, 84, 32, 0.55);
+}
+
+/* ── Cancel button ──────────────────────────────────────────────────────── */
+.dictation-cancel-btn {
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    padding: 5px 7px;
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.dictation-cancel-btn:hover {
+    color: rgba(255, 255, 255, 0.80);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Text area ──────────────────────────────────────────────────────────── */
+.dictation-text-box {
+    padding-top: 10px;
+    margin-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    max-width: 528px;
+    spacing: 0;
+}
+
+/* Confirmed / stable text */
+.dictation-confirmed {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 13px;
+}
+
+/* Partial / in-progress text (lighter + italic) */
+.dictation-partial {
+    color: rgba(255, 255, 255, 0.42);
+    font-size: 13px;
+    font-style: italic;
+}
+
